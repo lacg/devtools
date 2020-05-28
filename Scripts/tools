@@ -1,0 +1,64 @@
+#!/bin/bash
+baseImage="lacg/axway_"
+
+getImageName()
+{
+    image=$baseImage$1:$2
+}
+
+initializeDisplay()
+{
+  log "Checks if XQuartz is installed, if not, installs it for you."
+  if [[ -z $(brew cask list | grep xquartz) ]]
+  then
+    brew cask install xquartz
+  fi
+
+  ip=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+  log "Setting XHost to $ip"
+  xhost + $ip
+  display=$ip:0
+}
+
+initializeImage()
+{
+  log "Check if Docker is installed, if not, installs it for you."
+  brew info Docker || brew install Docker
+
+  # Check if the image is downloaded, otherwise pull from repository and tell to the user.
+  # This is the only time there is a output, even without a -v, because it will take long.
+  # Also, it will hold the command line process until the download is finished.
+  imageId=$(docker image ls --filter reference=$image -aq)
+
+  if [[ -z "$imageId" ]]
+  then
+    imageExists=$(docker manifest inspect $image > /dev/null ; echo $?)
+    if [[ $imageExists -eq 0 ]]
+    then
+      # As pulling takes longer, we will need to show the output.
+      if [[ "$verbose" == "n" ]]
+      then
+        exec >/dev/tty
+      fi
+
+      echo "#### Pulling version $tag from Docker Hub. ####"
+      echo "######## This will take a few minutes. ########"
+      docker image pull $image > /dev/tty
+
+      # Reverts the /dev/tty for non-verbose.
+      if [[ "$verbose" == "n" ]]
+      then
+        exec >/dev/null >&1
+      fi
+    else
+      echo "Version $tag does not exists." > /dev/tty
+      exit 1
+    fi
+  fi
+}
+
+getMagicCookie()
+{
+  displayNumber=$(echo $display | cut -d ':' -f2)
+  magicCookie=$(xauth list | tr -s ' ' | grep ":$displayNumber MIT-MAGIC-COOKIE-1" -m1 | cut -d ' ' -f3)
+}

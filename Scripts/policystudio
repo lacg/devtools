@@ -1,0 +1,133 @@
+#!/bin/bash
+# XHost with docker run utility
+# Author: Luiz Garcia (Axway) (c) 2020
+# To do:
+#
+
+parameters=$@
+command=$0
+
+myDir="$(dirname "$command")"
+source "$myDir/tools"
+
+log()
+{
+  if [[ $verbose == "y" ]]
+  then
+    echo "$@"
+  fi
+}
+
+printUsage()
+{
+  log "Usage:"
+  log "    ./`basename $command` version"
+  log
+  log "Where:"
+  log "    <version>  Required. Version like 7.5.3, 7.5.3.12, 7.5.3.13, 7.7.202001, 7.7.202003."
+  log
+  log "Examples:"
+  log "    ./`basename $command` 7.5.3.13"
+  log
+}
+
+parseOptions()
+{
+  options=hv
+  longOptions=help,verbose
+  # saner programming env: these switches turn some bugs into errors
+  # set -o errexit -o pipefail -o noclobber -o nounset
+
+  # -allow a command to fail with !’s side effect on errexit
+  # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
+  ! /usr/local/opt/gnu-getopt/bin/getopt --test > /dev/null
+  if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
+     echo 'I’m sorry, `/usr/local/opt/gnu-getopt/bin/getopt --test` failed in this environment.'
+      exit 1
+  fi
+
+  # -regarding ! and PIPESTATUS see above
+  # -temporarily store output to be able to check for errors
+  # -activate quoting/enhanced mode (e.g. by writing out “--options”)
+  # -pass arguments only via   -- "$@"   to separate them correctly
+  # ! parsed=$(/usr/local/opt/gnu-getopt/bin/getopt --options=$options --longoptions=$longOptions --name "$0" -- "$@")
+  ! parsed=$(/usr/local/opt/gnu-getopt/bin/getopt --options=$options --longoptions=$longOptions --name "$command" "$parameters")
+  if [[ ${PIPESTATUS[0]} -ne 0 ]]; then
+      # e.g. return value is 1
+      #  then /usr/local/opt/gnu-getopt/bin/getopt has complained about wrong arguments to stdout
+      exit 2
+  fi
+  # read /usr/local/opt/gnu-getopt/bin/getopt’s output this way to handle the quoting right:
+  eval set "$parsed"
+  # Set this to y if you want to see the usage
+  help="n"
+  # Set this to y if you want the script to output messages
+  verbose="n"
+
+  # Split strings.
+  read -ra split <<< $parameters
+  for i in "${split[@]}"
+  do
+    case "$i" in
+        -h|--help)
+            help=y
+            shift
+            ;;
+        -v|--verbose)
+            verbose=y
+            shift
+            ;;
+        --)
+            shift
+            ;;
+        *)
+            version=$i
+            shift
+            ;;
+    esac
+  done
+
+}
+
+# This is the main part of the script, the rest is more related to parse the options and supporting functions.
+main()
+{
+  log "`basename $command` utility v1.0 2020-05-16 by Luiz Garcia - Axway"
+
+  getImageName policystudio $version
+  initializeImage
+  initializeDisplay
+  getMagicCookie
+
+  # Check if there is already the directories for that version.
+  if [[ ! -d "~/axway/policystudio/$version" ]]
+  then
+    log "Initializing directories."
+    mkdir -p ~/axway/policystudio/$version
+    ID=$(docker container run -itd $image &) && \
+      docker container cp $ID:/opt/axway/policystudio/configuration/ ~/axway/policystudio/$version/ && \
+      docker container cp $ID:/opt/axway/policystudio/plugins/ ~/axway/policystudio/$version/ && \
+      docker container stop $ID && \
+      docker container rm $ID
+  fi
+
+  log "Running $command"
+  docker container run -d -e DISPLAY=$display -e COMMAND=/opt/axway/policystudio/policystudio -e MAGIC_COOKIE=$magicCookie -v /tmp/.X11-unix:/tmp/.X11-unix -v ~/axway/apiprojects/$version:/home/axway/apiprojects -v ~/axway/policystudio/$version/configuration:/opt/axway/policystudio/configuration -v ~/axway/policystudio/$version/plugins:/opt/axway/policystudio/plugins -v ~/axway/policystudio/$version/logs:/opt/axway/policystudio/logs -v ~/axway/policystudio/$version/trace:/opt/axway/policystudio/trace $image /home/axway/execute &
+}
+
+parseOptions
+
+# handle non-option arguments
+if [[ "$help" == "y" ]] || [[ $# -lt "1" ]] || [[ -z "$version" ]]
+then
+  verbose=y
+  printUsage
+else
+  if [[ "$verbose" == "n" ]]
+  then
+    exec >/dev/null 2>&1
+  fi
+
+  # Call main function.
+  main
+fi
