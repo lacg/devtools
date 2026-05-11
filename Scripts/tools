@@ -1,0 +1,113 @@
+#!/bin/bash
+baseImage="lacg/axway_"
+
+# Finds the container runtime binary and sets DOCKER.
+# Checks PATH first, then well-known install locations for each runtime.
+# Supports: Docker Desktop, Rancher Desktop, Podman, Colima, OrbStack, Lima/nerdctl.
+findContainerRuntime()
+{
+  # Already resolved in this session — skip.
+  [[ -n "$DOCKER" ]] && return 0
+
+  local candidates=(
+    # Anything already in PATH (Colima, OrbStack, Homebrew docker/podman/nerdctl, etc.)
+    docker
+    podman
+    nerdctl
+    # Rancher Desktop (macOS)
+    "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin/docker"
+    # Docker Desktop (macOS)
+    "/Applications/Docker.app/Contents/Resources/bin/docker"
+    # Homebrew on Apple Silicon
+    /opt/homebrew/bin/docker
+    /opt/homebrew/bin/podman
+    /opt/homebrew/bin/nerdctl
+    # Homebrew on Intel Mac
+    /usr/local/bin/docker
+    /usr/local/bin/podman
+    /usr/local/bin/nerdctl
+  )
+
+  for candidate in "${candidates[@]}"; do
+    if [[ "$candidate" == /* ]]; then
+      # Absolute path — check executable bit directly.
+      if [[ -x "$candidate" ]]; then
+        DOCKER="$candidate"
+        log "Using container runtime: $DOCKER"
+        return 0
+      fi
+    else
+      # Bare name — look it up in PATH.
+      if command -v "$candidate" &>/dev/null; then
+        DOCKER=$(command -v "$candidate")
+        log "Using container runtime: $DOCKER"
+        return 0
+      fi
+    fi
+  done
+
+  echo "Error: no container runtime found." \
+       "Please install Docker Desktop, Rancher Desktop, Podman, Colima, or OrbStack." >/dev/tty
+  exit 1
+}
+
+getImageName()
+{
+    image=$baseImage$1:$2
+}
+
+initializeDisplay()
+{
+  log "Checks if XQuartz is installed, if not, installs it for you."
+  if [[ -z $(brew list --cask 2>/dev/null | grep xquartz) ]]
+  then
+    brew install --cask xquartz
+  fi
+
+  ip=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+  log "Setting XHost to $ip"
+  xhost + $ip
+  xhost +local:docker
+  display=$ip:0
+}
+
+initializeImage()
+{
+  findContainerRuntime
+
+  # Check if the image is downloaded; pull if not (only time output is shown without -v).
+  local platformFlag=""
+  [[ -n "$PLATFORM" ]] && platformFlag="--platform $PLATFORM"
+
+  imageId=$("$DOCKER" image ls --filter reference=$image -aq)
+
+  if [[ -z "$imageId" ]]
+  then
+    imageExists=$("$DOCKER" manifest inspect $image > /dev/null 2>&1; echo $?)
+    if [[ $imageExists -eq 0 ]]
+    then
+      if [[ "$verbose" == "n" ]]
+      then
+        exec >/dev/tty
+      fi
+
+      echo "#### Pulling version $version from registry. ####"
+      echo "######## This will take a few minutes. ########"
+      "$DOCKER" image pull $platformFlag $image > /dev/tty
+
+      if [[ "$verbose" == "n" ]]
+      then
+        exec >/dev/null >&1
+      fi
+    else
+      echo "Version $version does not exist." >/dev/tty
+      exit 1
+    fi
+  fi
+}
+
+getMagicCookie()
+{
+  displayNumber=$(echo $display | cut -d ':' -f2)
+  magicCookie=$(xauth list | tr -s ' ' | grep ":$displayNumber MIT-MAGIC-COOKIE-1" -m1 | cut -d ' ' -f3)
+}
