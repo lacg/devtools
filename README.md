@@ -98,6 +98,17 @@ All directories are created automatically on first run. Place your `licensekey.l
 
 Any folders passed with `-m`/`--mount` are mounted on top of this layout — typically under `/home/axway/apiprojects/<name>` so they show up alongside the default projects inside Policy Studio.
 
+### Restarting Policy Studio (double-click icon)
+
+If Policy Studio is closed from inside the browser (**File → Exit**) or the Mac/container engine restarts, you can bring it back without the command line. Copy `Scripts/restart-policystudio.command` to your Desktop (rename it to something friendly like `Restart Policy Studio.command` if you like) and **double-click it**. It finds the existing Policy Studio container, restarts it — relaunching both KasmVNC and Policy Studio — and reopens the browser at the correct port.
+
+```shell
+cp Scripts/restart-policystudio.command ~/Desktop/
+chmod +x ~/Desktop/restart-policystudio.command
+```
+
+> **First launch:** macOS Gatekeeper may warn that it "cannot verify the developer". Right-click the file → **Open** → **Open** once to allow it (or run `xattr -d com.apple.quarantine ~/Desktop/restart-policystudio.command`). After that, a normal double-click works.
+
 ---
 
 ## Versions up to 7.7.20.xx — XQuartz (X11 forwarding)
