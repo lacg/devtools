@@ -1,50 +1,70 @@
 #!/bin/bash
 baseImage="lacg/axway_"
 
-# Finds the container runtime binary and sets DOCKER.
-# Checks PATH first, then well-known install locations for each runtime.
-# Supports: Docker Desktop, Rancher Desktop, Podman, Colima, OrbStack, Lima/nerdctl.
+# Finds a working container runtime and sets DOCKER.
+# A candidate is only selected if its binary exists AND its daemon responds.
+# This matters when Rancher Desktop switches between the dockerd (moby) and
+# containerd engines: the docker binary can linger on disk while only nerdctl
+# can actually reach the running engine (or vice versa). Probing the daemon
+# lets the script follow whichever engine is currently up.
+#
+# Set DOCKER yourself (export DOCKER=nerdctl) to override the auto-detection.
+# Supports: Docker Desktop, Rancher Desktop (dockerd/containerd), Podman,
+# Colima, OrbStack, Lima/nerdctl.
 findContainerRuntime()
 {
-  # Already resolved in this session — skip.
+  # Already resolved in this session or explicitly overridden — skip.
   [[ -n "$DOCKER" ]] && return 0
 
   local candidates=(
     # Anything already in PATH (Colima, OrbStack, Homebrew docker/podman/nerdctl, etc.)
     docker
-    podman
     nerdctl
-    # Rancher Desktop (macOS)
+    podman
+    # Rancher Desktop (macOS) — ~/.rd/bin holds whichever CLI matches the engine.
+    "$HOME/.rd/bin/docker"
+    "$HOME/.rd/bin/nerdctl"
     "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin/docker"
+    "/Applications/Rancher Desktop.app/Contents/Resources/resources/darwin/bin/nerdctl"
     # Docker Desktop (macOS)
     "/Applications/Docker.app/Contents/Resources/bin/docker"
     # Homebrew on Apple Silicon
     /opt/homebrew/bin/docker
-    /opt/homebrew/bin/podman
     /opt/homebrew/bin/nerdctl
+    /opt/homebrew/bin/podman
     # Homebrew on Intel Mac
     /usr/local/bin/docker
-    /usr/local/bin/podman
     /usr/local/bin/nerdctl
+    /usr/local/bin/podman
   )
 
+  local resolved firstFound=""
+
   for candidate in "${candidates[@]}"; do
+    # Resolve to an executable path (PATH lookup for bare names).
     if [[ "$candidate" == /* ]]; then
-      # Absolute path — check executable bit directly.
-      if [[ -x "$candidate" ]]; then
-        DOCKER="$candidate"
-        log "Using container runtime: $DOCKER"
-        return 0
-      fi
+      [[ -x "$candidate" ]] && resolved="$candidate" || resolved=""
     else
-      # Bare name — look it up in PATH.
-      if command -v "$candidate" &>/dev/null; then
-        DOCKER=$(command -v "$candidate")
-        log "Using container runtime: $DOCKER"
-        return 0
-      fi
+      resolved=$(command -v "$candidate" 2>/dev/null)
+    fi
+    [[ -z "$resolved" ]] && continue
+
+    # Remember the first binary we found, for a clearer error if none connect.
+    [[ -z "$firstFound" ]] && firstFound="$resolved"
+
+    # Only commit to a runtime whose daemon actually answers.
+    if "$resolved" info &>/dev/null; then
+      DOCKER="$resolved"
+      log "Using container runtime: $DOCKER"
+      return 0
     fi
   done
+
+  if [[ -n "$firstFound" ]]; then
+    echo "Error: found a container runtime ($firstFound) but its daemon is not responding." \
+         "Start Docker Desktop / Rancher Desktop (or your engine) and try again." >/dev/tty
+    exit 1
+  fi
 
   echo "Error: no container runtime found." \
        "Please install Docker Desktop, Rancher Desktop, Podman, Colima, or OrbStack." >/dev/tty
@@ -79,29 +99,29 @@ initializeImage()
   local platformFlag=""
   [[ -n "$PLATFORM" ]] && platformFlag="--platform $PLATFORM"
 
-  imageId=$("$DOCKER" image ls --filter reference=$image -aq)
+  imageId=$("$DOCKER" image ls --filter reference=$image -aq 2>/dev/null)
 
   if [[ -z "$imageId" ]]
   then
-    imageExists=$("$DOCKER" manifest inspect $image > /dev/null 2>&1; echo $?)
-    if [[ $imageExists -eq 0 ]]
+    # Image not present locally — try to pull it. We let the pull itself be the
+    # existence check rather than `manifest inspect`, which nerdctl/podman don't
+    # support consistently.
+    if [[ "$verbose" == "n" ]]
     then
-      if [[ "$verbose" == "n" ]]
-      then
-        exec >/dev/tty
-      fi
+      exec >/dev/tty
+    fi
 
-      echo "#### Pulling version $version from registry. ####"
-      echo "######## This will take a few minutes. ########"
-      "$DOCKER" image pull $platformFlag $image > /dev/tty
-
-      if [[ "$verbose" == "n" ]]
-      then
-        exec >/dev/null >&1
-      fi
-    else
-      echo "Version $version does not exist." >/dev/tty
+    echo "#### Pulling version $version from registry. ####"
+    echo "######## This will take a few minutes. ########"
+    if ! "$DOCKER" image pull $platformFlag $image > /dev/tty
+    then
+      echo "Version $version could not be pulled (does it exist?)." >/dev/tty
       exit 1
+    fi
+
+    if [[ "$verbose" == "n" ]]
+    then
+      exec >/dev/null >&1
     fi
   fi
 }

@@ -22,18 +22,27 @@ log()
 printUsage()
 {
   log "Usage:"
-  log "    ./`basename $command` [options] version"
+  log "    ./`basename $command` <version> [-p port] [-m host:container]... [--no-restart] [-v]"
   log
   log "Where:"
-  log "    <version>  Required. Version like 7.5.3, 7.5.3.12, 7.5.3.13, 7.7.20.01, 7.7.20.03 (legacy X11)"
-  log "               or 7.7.0.20260228 and newer (KasmVNC, browser-based, no XQuartz needed)."
-  log "    -p <port>  Optional. Host port to map KasmVNC on (default: 6901)."
-  log "               Use different ports to run multiple instances simultaneously."
+  log "    <version>            Required. Version like 7.5.3, 7.5.3.12, 7.5.3.13, 7.7.20.01,"
+  log "                         7.7.20.03 (legacy X11) or 7.7.0.20260228 and newer"
+  log "                         (KasmVNC, browser-based, no XQuartz needed)."
+  log "    -p, --port <port>    Host port to map KasmVNC on (default: 6901). Use different"
+  log "                         ports to run multiple instances simultaneously."
+  log "    -m, --mount h:c      Map an extra host folder into the container. Repeatable."
+  log "                         Same 'host:container[:ro]' syntax as 'docker -v'."
+  log "    --no-restart         Do not add '--restart unless-stopped' (KasmVNC versions)."
+  log "    -v, --verbose        Verbose output."
+  log "    -h, --help           Show this help."
   log
   log "Examples:"
   log "    ./`basename $command` 7.5.3.13"
   log "    ./`basename $command` 7.7.0.20260228"
   log "    ./`basename $command` -p 6902 7.7.0.20260228"
+  log "    ./`basename $command` 7.7.0.20260228 \\"
+  log "        -m ~/git/axway-gtwy-code:/home/axway/apiprojects/axway-gtwy-code \\"
+  log "        -m ~/git/axway-dmz-gtwy-code:/home/axway/apiprojects/axway-dmz-gtwy-code"
   log
 }
 
@@ -42,6 +51,8 @@ parseOptions()
   help="n"
   verbose="n"
   port="6901"
+  restart="y"
+  extraMounts=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -54,14 +65,30 @@ parseOptions()
             shift
             ;;
         -p|--port)
+            if [[ -z "$2" ]]; then
+              echo "Error: $1 requires a port argument." >/dev/tty
+              exit 1
+            fi
             port="$2"
             shift 2
+            ;;
+        -m|--mount)
+            if [[ -z "$2" ]]; then
+              echo "Error: $1 requires a host:container argument." >/dev/tty
+              exit 1
+            fi
+            extraMounts+=("$2")
+            shift 2
+            ;;
+        --no-restart)
+            restart="n"
+            shift
             ;;
         --)
             shift
             ;;
         *)
-            version=$1
+            version="$1"
             shift
             ;;
     esac
@@ -90,14 +117,25 @@ mainKasmVnc()
   mkdir -p "$versionDir/policystudio/configuration"
   mkdir -p "$versionDir/policystudio/licenses"
 
+  # Build the run arguments, adding any extra -m/--mount folders and the
+  # restart policy (on by default so Policy Studio survives Mac sleep / VM
+  # restarts; disable with --no-restart).
+  local runArgs=(
+    --platform linux/amd64
+    -p "${port}:6901"
+    -v "$versionDir/apiprojects:/home/axway/apiprojects"
+    -v "$versionDir/policystudio/configuration:/opt/axway/policystudio/configuration/login"
+    -v "$versionDir/policystudio/licenses:/opt/axway/policystudio/conf/licenses:ro"
+  )
+  [[ "$restart" == "y" ]] && runArgs+=(--restart unless-stopped)
+
+  local m
+  for m in "${extraMounts[@]}"; do
+    runArgs+=(-v "$m")
+  done
+
   log "Running $command (KasmVNC) on port $port"
-  "$DOCKER" container run -d \
-    --platform linux/amd64 \
-    -p "${port}:6901" \
-    -v "$versionDir/apiprojects:/home/axway/apiprojects" \
-    -v "$versionDir/policystudio/configuration:/opt/axway/policystudio/configuration/login" \
-    -v "$versionDir/policystudio/licenses:/opt/axway/policystudio/conf/licenses:ro" \
-    "$image"
+  "$DOCKER" container run -d "${runArgs[@]}" "$image"
 
   log "Opening browser at http://localhost:${port} (credentials: axway / axway1)"
   sleep 5

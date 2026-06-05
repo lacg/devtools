@@ -60,10 +60,28 @@ These versions use KasmVNC — no XQuartz needed. The browser opens automaticall
 ./policystudio 7.7.0.20260228
 ```
 
+By default (KasmVNC versions) the container starts with `--restart unless-stopped`, so Policy Studio comes back automatically after the Mac sleeps or the container engine restarts. Pass `--no-restart` to opt out.
+
 To run multiple instances simultaneously, use the `-p` flag to assign a different port to each:
 
 ```shell
 ./policystudio -p 6902 7.7.0.20260228
+```
+
+**Mapping extra folders into the container.** Use `-m`/`--mount` (repeatable) to map additional host folders — for example to open Git checkouts of gateway code directly inside Policy Studio. The syntax is the same `host:container[:ro]` form as `docker -v`:
+
+```shell
+./policystudio 7.7.0.20260228 \
+    -m ~/git/axway-gtwy-code:/home/axway/apiprojects/axway-gtwy-code \
+    -m ~/git/axway-dmz-gtwy-code:/home/axway/apiprojects/axway-dmz-gtwy-code
+```
+
+> Mount the repos *into* `/home/axway/apiprojects/<name>` rather than symlinking from the host `apiprojects` folder — the container engine does not follow host symlinks across the VM boundary.
+
+Full option list:
+
+```shell
+./policystudio <version> [-p port] [-m host:container]... [--no-restart] [-v]
 ```
 
 ### Policy Studio file access
@@ -77,6 +95,8 @@ All data for a version lives under `~/axway/<version>/` on your Mac:
 | `~/axway/7.7.0.20260228/policystudio/licenses` | `/opt/axway/policystudio/conf/licenses` | Axway license file (optional) |
 
 All directories are created automatically on first run. Place your `licensekey.lic` in the licenses folder before starting if you need one.
+
+Any folders passed with `-m`/`--mount` are mounted on top of this layout — typically under `/home/axway/apiprojects/<name>` so they show up alongside the default projects inside Policy Studio.
 
 ---
 
