@@ -52,12 +52,21 @@ This checks for Rancher Desktop, Docker Desktop, and Podman in that order.
 
 These versions use KasmVNC — no XQuartz needed. The browser opens automatically at `http://localhost:6901` (credentials: `axway` / `axway1`). Your `~/apiprojects` folder is mounted directly into the container so you can open and save policy project files from Finder or VS Code.
 
+### Available versions
+
+| Version | Image | Notes |
+|---|---|---|
+| `7.7.0.20260830` | `lacg/axway_policystudio:7.7.0.20260830` | Current. Built from `APIGateway_7.7.20260830_Install_linux-x86-64_BN02.run` |
+| `7.7.0.20260228` | `lacg/axway_policystudio:7.7.0.20260228` | Previous release |
+
+Each version keeps its own data under `~/axway/<version>/`, so both can run side by side on different ports.
+
 ### Usage
 
 #### Policy Studio
 
 ```shell
-./policystudio 7.7.0.20260228
+./policystudio 7.7.0.20260830
 ```
 
 By default (KasmVNC versions) the container starts with `--restart unless-stopped`, so Policy Studio comes back automatically after the Mac sleeps or the container engine restarts. Pass `--no-restart` to opt out.
@@ -65,13 +74,13 @@ By default (KasmVNC versions) the container starts with `--restart unless-stoppe
 To run multiple instances simultaneously, use the `-p` flag to assign a different port to each:
 
 ```shell
-./policystudio -p 6902 7.7.0.20260228
+./policystudio -p 6902 7.7.0.20260830
 ```
 
 **Mapping extra folders into the container.** Use `-m`/`--mount` (repeatable) to map additional host folders — for example to open Git checkouts of gateway code directly inside Policy Studio. The syntax is the same `host:container[:ro]` form as `docker -v`:
 
 ```shell
-./policystudio 7.7.0.20260228 \
+./policystudio 7.7.0.20260830 \
     -m ~/git/axway-gtwy-code:/home/axway/apiprojects/axway-gtwy-code \
     -m ~/git/axway-dmz-gtwy-code:/home/axway/apiprojects/axway-dmz-gtwy-code
 ```
@@ -90,9 +99,9 @@ All data for a version lives under `~/axway/<version>/` on your Mac:
 
 | Host path | Container path | Purpose |
 |---|---|---|
-| `~/axway/7.7.0.20260228/apiprojects` | `/home/axway/apiprojects` | Policy project files |
-| `~/axway/7.7.0.20260228/policystudio/configuration` | `/opt/axway/policystudio/configuration/login` | Saved connections & login tokens |
-| `~/axway/7.7.0.20260228/policystudio/licenses` | `/opt/axway/policystudio/conf/licenses` | Axway license file (optional) |
+| `~/axway/<version>/apiprojects` | `/home/axway/apiprojects` | Policy project files |
+| `~/axway/<version>/policystudio/configuration` | `/opt/axway/policystudio/configuration/login` | Saved connections & login tokens |
+| `~/axway/<version>/policystudio/licenses` | `/opt/axway/policystudio/conf/licenses` | Axway license file (optional) |
 
 All directories are created automatically on first run. Place your `licensekey.lic` in the licenses folder before starting if you need one.
 
