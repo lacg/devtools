@@ -60,6 +60,14 @@ ARG USER=axway
 COPY --from=intermediate /opt/axway /opt/axway
 COPY --from=intermediate /home/${USER}/Desktop /home/${USER}/Desktop
 
+# Disable GTK's SVG icon loader (librsvg). Under QEMU user-mode emulation (Apple Silicon
+# without Rosetta) librsvg segfaults while laying out the New Project wizard, taking
+# Policy Studio down. Without the loader GTK simply skips SVG icons; Policy Studio's own
+# icons are PNG and unaffected.
+RUN mv /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so \
+       /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so.disabled && \
+    gdk-pixbuf-query-loaders-64 --update-cache
+
 # Add the Policy Studio supervisord entry so it is auto-started and supervised.
 COPY ./etc/supervisord.d/policystudio.ini /etc/supervisord.d/policystudio.ini
 RUN sed -i "s/USERNAME/${USER}/g" /etc/supervisord.d/policystudio.ini

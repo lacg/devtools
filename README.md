@@ -29,6 +29,19 @@ The container images are x86-64 and run under emulation on Apple Silicon. **Ranc
 
 > **Note:** Podman with QEMU emulation also works but may experience crashes in KasmVNC's WEBP encoder. If you use Podman, the image build auto-selects an aarch64 KasmVNC RPM to avoid this, but Rancher Desktop + Rosetta provides the most stable experience.
 
+> **Podman users:** create or reconfigure the machine with Rosetta on and enough memory, otherwise
+> amd64 binaries run under `qemu-x86_64-static`, where GTK's SVG renderer (librsvg) segfaults as soon
+> as the *New Project* wizard opens and Policy Studio exits. Each Policy Studio JVM may use up to 2 GiB.
+>
+> ```shell
+> podman machine stop
+> podman machine set --rosetta=true --memory 6144
+> podman machine start
+> ```
+>
+> Images from 7.7.0.20260830 on also ship with the SVG pixbuf loader disabled as a safety net, so the
+> wizard cannot reach librsvg even without Rosetta (some stock GTK icons render blank).
+
 #### Container runtime socket (`DOCKER_HOST`)
 
 The scripts auto-detect the container runtime binary. If you use a `docker` CLI that needs a custom socket (e.g. Podman), add this to your `~/.zshrc`:
