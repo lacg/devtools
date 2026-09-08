@@ -68,6 +68,11 @@ RUN mv /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so \
        /usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.so.disabled && \
     gdk-pixbuf-query-loaders-64 --update-cache
 
+# Ship preference defaults (see Scripts/plugin_customization.ini) and point the Eclipse
+# launcher at them. Program args must precede -vmargs in policystudio.ini.
+COPY --chown=${USER}:${USER} ./Scripts/plugin_customization.ini /opt/axway/policystudio/plugin_customization.ini
+RUN sed -i 's|^-vmargs$|-pluginCustomization\n/opt/axway/policystudio/plugin_customization.ini\n-vmargs|' /opt/axway/policystudio/policystudio.ini
+
 # Add the Policy Studio supervisord entry so it is auto-started and supervised.
 COPY ./etc/supervisord.d/policystudio.ini /etc/supervisord.d/policystudio.ini
 RUN sed -i "s/USERNAME/${USER}/g" /etc/supervisord.d/policystudio.ini
