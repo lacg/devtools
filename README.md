@@ -100,6 +100,12 @@ To run multiple instances simultaneously, use the `-p` flag to assign a differen
 
 > Mount the repos *into* `/home/axway/apiprojects/<name>` rather than symlinking from the host `apiprojects` folder — the container engine does not follow host symlinks across the VM boundary.
 
+> **OneDrive / iCloud folders:** only files that are physically on disk are visible inside the
+> container. Cloud-only placeholders read back as errors (`Resource deadlock avoided`, missing
+> files), which makes *New Project → from existing project* fail half-way. Right-click the folder in
+> Finder and choose **Always Keep on This Device** before mounting it, or list placeholders with
+> `find <folder> -type f -exec stat -f '%b %N' {} \; | grep '^0 '` and `cat` each one to download it.
+
 Full option list:
 
 ```shell
