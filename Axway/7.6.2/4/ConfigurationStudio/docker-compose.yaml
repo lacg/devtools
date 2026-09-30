@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  devtools:
+    image: lacg/axway_configurationstudio:7.6.2.4
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - configurationStudio:/opt/axway/configurationstudio/configuration
+volumes:
+  configurationStudio:

@@ -1,0 +1,6 @@
+services:
+  devtools:
+    image: lacg/axway_devtools_base:9
+    build:
+      context: .
+      dockerfile: Dockerfile

@@ -1,0 +1,29 @@
+services:
+  policystudio:
+    image: lacg/axway_policystudio:7.7.0.20260228
+    platform: linux/amd64
+    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "6901:6901"
+    volumes:
+      # Policy project files — bind-mounted to ~/axway/7.7.0.20260228/apiprojects on your Mac
+      # so you can open and save files from Finder, VS Code, or any local tool.
+      - type: bind
+        source: ~/axway/7.7.0.20260228/apiprojects
+        target: /home/axway/apiprojects
+
+      # Saved connections and login tokens (persisted across container restarts).
+      - type: bind
+        source: ~/axway/7.7.0.20260228/policystudio/configuration
+        target: /opt/axway/policystudio/configuration/login
+
+      # Optional: Axway license file.
+      # Create the directory and place licensekey.lic inside before starting.
+      # Comment out if no local license is needed.
+      - type: bind
+        source: ~/axway/7.7.0.20260228/policystudio/licenses
+        target: /opt/axway/policystudio/conf/licenses
+        read_only: true

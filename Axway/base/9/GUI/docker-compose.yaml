@@ -1,0 +1,13 @@
+services:
+  devtools:
+    image: lacg/axway_devtools_gui:9
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "6901:6901"
+    volumes:
+      - apiprojects:/home/axway/apiprojects
+
+volumes:
+  apiprojects:

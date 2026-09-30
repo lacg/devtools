@@ -1,0 +1,17 @@
+network:
+  protocol: http
+  ssl:
+    require_ssl: false
+
+security:
+  brute_force_protection:
+    blacklist_threshold: 20
+    blacklist_timeout: 10
+
+encoding:
+  rect_encoding_mode:
+    min_quality: 7
+    max_quality: 8
+  video_encoding_mode:
+    jpeg_quality: 8
+    webp_quality: 0

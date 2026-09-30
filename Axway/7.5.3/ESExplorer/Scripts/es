@@ -1,0 +1,2 @@
+#!/bin/bash
+java -cp /opt/axway/apigateway/system/lib/plugins/es-explorer-1.3.0-1.jar:/opt/axway/apigateway/system/lib/plugins/es-core-1.3.0-6.jar:/opt/axway/apigateway/system/lib/modules/slf4j-api-1.7.21.jar:/opt/axway/apigateway/system/lib/plugins/apigw-common-1.1.0-2.jar com.vordel.es.explorer.EntityExplorer

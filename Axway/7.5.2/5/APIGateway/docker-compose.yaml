@@ -1,0 +1,8 @@
+version: '3.7'
+
+services:
+  devtools:
+    image: lacg/axway_gateway:7.5.2.5
+    build:
+      context: .
+      dockerfile: Dockerfile

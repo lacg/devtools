@@ -1,0 +1,50 @@
+#!/bin/bash
+
+copyFiles()
+{
+  dir=$1
+  fromDir=$axwayDir/$dir
+  toDir=$contextDir/$dir
+  mkdir -p $toDir
+
+  for file in $(cat Dockerfile | grep -o "COPY --chown.*$dir.*" | cut -d ' ' -f3)
+  do
+    fileToCopy=$fromDir/$(basename -- "$file")
+    cp -R $fileToCopy $toDir
+  done
+}
+
+if [[ -z $1 ]]
+then
+    contextDir=$PWD
+else
+    contextDir=$1
+fi
+
+axwayDir=$(echo ~)/Axway
+
+if [[ -z $2 ]]
+then
+    version=1.0
+else
+    version=$2
+fi
+
+if [[ -z $3 ]]
+then
+  buildId=1.0
+else
+  buildId=$3
+fi
+
+# Create installer folder with the files needed for the build.
+copyFiles Installers
+copyFiles Licenses
+copyFiles Scripts
+
+docker-compose build --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') --build-arg BUILD_VERSION=$version --build-arg BUIDID=$buildId --force-rm
+
+docker image prune -f --filter label=stage=intermediate --filter label=build=$buildId
+
+rm -rf $contextDir/Installers
+rm -rf $contextDir/Licenses

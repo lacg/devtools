@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  devtools:
+    image: lacg/axway_devtools_gui:8
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - apiprojects:/home/axway/apiprojects
+volumes:
+  apiprojects:

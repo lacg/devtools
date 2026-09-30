@@ -1,0 +1,8 @@
+version: '3.7'
+
+services:
+  devtools:
+    image: lacg/axway_esexplorer:7.7.20.01
+    build:
+      context: .
+      dockerfile: Dockerfile

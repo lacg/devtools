@@ -1,0 +1,16 @@
+#!/usr/bin/env xdg-open
+
+[Desktop Entry]
+Version=1.0
+Type=Application
+Categories=Network;WebBrowser;GTK;
+Encoding=UTF-8
+Name=Policy Studio
+GenericName=policystudio
+Comment=policystudio
+TryExec=/opt/axway/policystudio/policystudio
+Exec=/opt/axway/policystudio/policystudio
+Icon=/opt/axway/axway.png
+Terminal=false
+StartupNotify=true
+X-SuSE-translate=true

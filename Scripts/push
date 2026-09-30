@@ -1,0 +1,29 @@
+#!/bin/bash
+
+pushImages()
+{
+  imageList=$(docker images | grep axway_ | tr -s ' ')
+  images=()
+
+  while IFS=" " read -r rep tg remainder
+  do
+    images+=("${rep}:${tg}")
+  done <<< "$imageList"
+
+  for img in ${images[*]}
+  do
+    pushImage $img
+  done
+}
+
+pushImage()
+{
+  docker image push $1
+}
+
+if [[ $1 -eq "all" ]]
+then
+  pushImages
+else
+    pushImage $1
+fi

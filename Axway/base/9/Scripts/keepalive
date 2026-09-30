@@ -1,0 +1,17 @@
+#!/bin/bash
+
+sleep 10m
+
+# Check if the process is still running, if yes sleep for 5s.
+# I'll do this to keep the execute shell script running,
+# Otherwise docker will believe the execution was ended
+# And it ends the container automatically after 10 to 15 minutes.
+isRunning=$(pgrep -f $COMMAND)
+
+while [[ $isRunning >/dev/null ]]
+do
+    sleep 10m
+    isRunning=$(pgrep -f $COMMAND)
+done
+
+exit 0

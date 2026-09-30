@@ -1,0 +1,5 @@
+*.run
+*.tar
+.DS_Store
+.claude/
+Installers/

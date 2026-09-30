@@ -1,0 +1,8 @@
+#!/bin/bash
+xauth add $DISPLAY  MIT-MAGIC-COOKIE-1  $MAGIC_COOKIE
+
+# Keep docker alive
+nice -n 19 ./keepalive &
+
+# Runs the command
+$COMMAND

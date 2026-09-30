@@ -1,0 +1,86 @@
+#!/bin/bash
+# XHost with docker run utility
+# Author: Luiz Garcia (Axway) (c) 2020
+# To do:
+#
+
+parameters=$@
+command=$0
+
+myDir="$(dirname "$command")"
+source "$myDir/tools"
+
+log()
+{
+  if [[ $verbose == "y" ]]
+  then
+    echo "$@"
+  fi
+}
+
+printUsage()
+{
+  log "Usage:"
+  log "    ./`basename $command` version"
+  log
+  log "Where:"
+  log "    <version>  Required. Version like 7.5.3, 7.5.3.12, 7.5.3.13, 7.7.202001, 7.7.202003."
+  log
+  log "Examples:"
+  log "    ./`basename $command` 7.5.3.13"
+  log
+}
+
+parseOptions()
+{
+  help=”n”
+  verbose=”n”
+
+  for i in $parameters
+  do
+    case “$i” in
+        -h|--help)
+            help=y
+            ;;
+        -v|--verbose)
+            verbose=y
+            ;;
+        --)
+            ;;
+        *)
+            version=$i
+            ;;
+    esac
+  done
+}
+
+# This is the main part of the script, the rest is more related to parse the options and supporting functions.
+main()
+{
+  log "`basename $command` utility v1.0 2020-05-16 by Luiz Garcia - Axway"
+
+  getImageName esexplorer $version
+  initializeImage
+  initializeDisplay
+  getMagicCookie
+
+  log "Running $command"
+  docker container run -d -e DISPLAY=$display -e COMMAND=/home/axway/es -e MAGIC_COOKIE=$magicCookie -v /tmp/.X11-unix:/tmp/.X11-unix -v ~/axway/apiprojects/$version:/home/axway/apiprojects $image /home/axway/execute &
+}
+
+parseOptions
+
+# handle non-option arguments
+if [[ "$help" == "y" ]] || [[ $# -lt "1" ]] || [[ -z "$version" ]]
+then
+  verbose=y
+  printUsage
+else
+  if [[ "$verbose" == "n" ]]
+  then
+    exec >/dev/null 2>&1
+  fi
+
+  # Call main function.
+  main
+fi

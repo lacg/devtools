@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  devtools:
+    image: lacg/axway_policystudio:7.7.20210530
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - policyStudio:/opt/axway/policystudio/configuration
+volumes:
+  policyStudio:
